@@ -1,0 +1,7 @@
+{
+  "name": "stacionar-tech-bot",
+  "version": "1.0.0",
+  "description": "Bacaraservice — стаціонарний сервіс бот",
+  "private": true,
+  "engines": { "node": ">=18" }
+}
