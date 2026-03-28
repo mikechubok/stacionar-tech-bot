@@ -3,6 +3,5 @@
   "version": "1.0.0",
   "description": "Bacaraservice — стаціонарний сервіс бот",
   "private": true,
-  "type": "module",
   "engines": { "node": ">=18" }
 }
