@@ -1,7 +1,7 @@
 const BOT_TOKEN = process.env.SERVICE_BOT_TOKEN;
 const SHEET_ID = process.env.SHEET_ID || '1CBVE5_5pAc5aeUytlaenFeoQDNCGg1qAqmlALUV7sh0';
 const SHEET_NAME = 'стаціонарний сервіс';
-const API = `https://api.telegram.org/bot${BOT_TOKEN}`;
+const API = `https://api.telegram.org/bot${8727458458:AAHwE_ocSgghiA5Wkel3PSgzPjaserddCCU}`;
 
 // ── Прайс по категоріях ───────────────────────────────────────────────────────
 const PRICE = {
