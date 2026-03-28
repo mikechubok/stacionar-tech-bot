@@ -555,8 +555,10 @@ async function handleCallback(cb) {
   // Повернути в чергу
   if (data.startsWith('returnq_')) {
     const actId = data.replace('returnq_', '');
-    const res = await callScript({ action: 'returnToQueue', actId });
-    await send(chatId, `debug: ${JSON.stringify(res)}`);
+    await callScript({ action: 'returnToQueue', actId });
+    await send(chatId, `↩️ Апарат <b>${actId}</b> повернено в чергу.`);
+    return showMyDevices(chatId, s.data.techName || 'Технік');
+  }
 
   // Категорії робіт
   if (data.startsWith('works_')) return showCategories(chatId, data.replace('works_', ''));
