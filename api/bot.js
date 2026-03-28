@@ -257,10 +257,10 @@ async function showMyDevices(chatId, techName) {
 async function showDeviceActions(chatId, actId) {
   return send(chatId, `🔧 <b>Акт ${actId}</b>\nОберіть дію:`, inlineKb([
     [{ text: '📄 Переглянути акт', callback_data: `view_${actId}` }],
-    [{ text: '🔧 Додати роботи', callback_data: `works_${actId}` }],
-    [{ text: '🔩 Додати запчастини', callback_data: `parts_${actId}` }],
+    [{ text: '🔧 Роботи', callback_data: `works_${actId}` }, { text: '🔩 Запчастини', callback_data: `parts_${actId}` }],
     [{ text: '📝 Примітка', callback_data: `note_${actId}` }],
     [{ text: '✅ Видати апарат', callback_data: `close_${actId}` }],
+    [{ text: '↩️ Повернути в чергу', callback_data: `returnq_${actId}` }],
     [{ text: '🔙 Мої апарати', callback_data: 'my_devices' }],
   ]));
 }
@@ -270,10 +270,8 @@ async function viewAct(chatId, actId) {
   const result = await callScript({ action: 'getDeviceInfo', actId });
   const d = result?.device;
   if (!d) return send(chatId, '❌ Акт не знайдено.');
-
   const worksText = d.works ? d.works.split('\n').map((w,i) => `  ${i+1}. ${w}`).join('\n') : '  —';
   const partsText = d.parts ? d.parts.split('\n').map((p,i) => `  ${i+1}. ${p}`).join('\n') : '  —';
-
   return send(chatId,
     `📄 <b>Акт ${actId}</b>\n` +
     `━━━━━━━━━━━━━━━━━\n` +
@@ -294,6 +292,58 @@ async function viewAct(chatId, actId) {
       [{ text: '✏️ Редагувати запчастини', callback_data: `editparts_${actId}` }],
       [{ text: '🔙 Назад', callback_data: `dev_${actId}` }],
     ])
+  );
+}
+
+// ── РЕДАГУВАННЯ РОБІТ — список з кнопками видалення ───────────────────────────
+async function showEditWorks(chatId, actId) {
+  const result = await callScript({ action: 'getDeviceInfo', actId });
+  const d = result?.device;
+  const works = d?.works ? d.works.split('\n').filter(w => w.trim()) : [];
+  if (!works.length) {
+    return send(chatId,
+      `✏️ <b>Роботи | Акт ${actId}</b>\n\nСписок порожній.`,
+      inlineKb([
+        [{ text: '➕ Додати роботи', callback_data: `works_${actId}` }],
+        [{ text: '🔙 До акту', callback_data: `view_${actId}` }],
+      ])
+    );
+  }
+  const buttons = works.map((w, i) => [{
+    text: `❌ ${w}`,
+    callback_data: `delwork_${actId}_${i}`,
+  }]);
+  buttons.push([{ text: '➕ Додати ще', callback_data: `works_${actId}` }]);
+  buttons.push([{ text: '🔙 До акту', callback_data: `view_${actId}` }]);
+  return send(chatId,
+    `✏️ <b>Роботи | Акт ${actId}</b>\n\nНатисніть ❌ щоб видалити роботу:`,
+    inlineKb(buttons)
+  );
+}
+
+// ── РЕДАГУВАННЯ ЗАПЧАСТИН — список з кнопками видалення ───────────────────────
+async function showEditParts(chatId, actId) {
+  const result = await callScript({ action: 'getDeviceInfo', actId });
+  const d = result?.device;
+  const parts = d?.parts ? d.parts.split('\n').filter(p => p.trim()) : [];
+  if (!parts.length) {
+    return send(chatId,
+      `✏️ <b>Запчастини | Акт ${actId}</b>\n\nСписок порожній.`,
+      inlineKb([
+        [{ text: '➕ Додати запчастини', callback_data: `parts_${actId}` }],
+        [{ text: '🔙 До акту', callback_data: `view_${actId}` }],
+      ])
+    );
+  }
+  const buttons = parts.map((p, i) => [{
+    text: `❌ ${p}`,
+    callback_data: `delpart_${actId}_${i}`,
+  }]);
+  buttons.push([{ text: '➕ Додати ще', callback_data: `parts_${actId}` }]);
+  buttons.push([{ text: '🔙 До акту', callback_data: `view_${actId}` }]);
+  return send(chatId,
+    `✏️ <b>Запчастини | Акт ${actId}</b>\n\nНатисніть ❌ щоб видалити позицію:`,
+    inlineKb(buttons)
   );
 }
 
@@ -478,24 +528,36 @@ async function handleCallback(cb) {
   // Перегляд акту
   if (data.startsWith('view_')) return viewAct(chatId, data.replace('view_', ''));
 
-  // Редагувати роботи
-  if (data.startsWith('editworks_')) {
-    const actId = data.replace('editworks_', '');
-    const res = await callScript({ action: 'getDeviceInfo', actId });
-    s.step = 'edit_works'; s.data.pendingActId = actId;
-    return send(chatId,
-      `✏️ <b>Редагувати роботи | Акт ${actId}</b>\n\nПоточний список:\n${res?.device?.works || '(порожньо)'}\n\nВведіть новий список (кожна робота з нового рядка):`
-    );
+  // Редагувати роботи — показати список з ❌
+  if (data.startsWith('editworks_')) return showEditWorks(chatId, data.replace('editworks_', ''));
+
+  // Редагувати запчастини — показати список з ❌
+  if (data.startsWith('editparts_')) return showEditParts(chatId, data.replace('editparts_', ''));
+
+  // Видалити роботу по індексу
+  if (data.startsWith('delwork_')) {
+    const parts = data.replace('delwork_', '').split('_');
+    const idx = parseInt(parts[parts.length - 1]);
+    const actId = parts.slice(0, -1).join('_');
+    await callScript({ action: 'deleteWork', actId, idx });
+    return showEditWorks(chatId, actId);
   }
 
-  // Редагувати запчастини
-  if (data.startsWith('editparts_')) {
-    const actId = data.replace('editparts_', '');
-    const res = await callScript({ action: 'getDeviceInfo', actId });
-    s.step = 'edit_parts'; s.data.pendingActId = actId;
-    return send(chatId,
-      `✏️ <b>Редагувати запчастини | Акт ${actId}</b>\n\nПоточний список:\n${res?.device?.parts || '(порожньо)'}\n\nВведіть новий список (кожна запчастина з нового рядка):`
-    );
+  // Видалити запчастину по індексу
+  if (data.startsWith('delpart_')) {
+    const parts = data.replace('delpart_', '').split('_');
+    const idx = parseInt(parts[parts.length - 1]);
+    const actId = parts.slice(0, -1).join('_');
+    await callScript({ action: 'deletePart', actId, idx });
+    return showEditParts(chatId, actId);
+  }
+
+  // Повернути в чергу
+  if (data.startsWith('returnq_')) {
+    const actId = data.replace('returnq_', '');
+    await callScript({ action: 'returnToQueue', actId });
+    await send(chatId, `↩️ Апарат <b>${actId}</b> повернено в чергу.`);
+    return showMyDevices(chatId, s.data.techName || 'Технік');
   }
 
   // Категорії робіт
