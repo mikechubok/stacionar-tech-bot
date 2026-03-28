@@ -127,7 +127,8 @@ async function callScript(payload) {
   try {
     const r = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'text/plain' }, // ← змінити з application/json
+      redirect: 'follow',                         // ← додати цей рядок
       body: JSON.stringify(payload),
     });
     return r.json();
